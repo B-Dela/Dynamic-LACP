@@ -15,14 +15,22 @@ if (isset($_POST['add_candidate'])) {
 
     // Photo Upload
     $photo_name = $_FILES['photo']['name'];
-    $target_dir = "../uploads/";
-    $target_file = $target_dir . basename($photo_name);
-    $uploadOk = 1;
-    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+    $photo_tmp_name = $_FILES['photo']['tmp_name'];
+    $photo_error = $_FILES['photo']['error'];
+
+    // Absolute path to uploads directory
+    $upload_dir = __DIR__ . '/../uploads/';
+
+    // Create uploads directory if it doesn't exist
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
 
     // Basic Validation
     if (empty($fullname) || empty($gender) || empty($portfolio_id) || empty($photo_name)) {
         $_SESSION['error'] = "All fields are required";
+    } elseif ($photo_error !== UPLOAD_ERR_OK) {
+        $_SESSION['error'] = "Upload error code: " . $photo_error;
     } else {
         // Generate Candidate ID
         try {
@@ -51,9 +59,25 @@ if (isset($_POST['add_candidate'])) {
             }
             $candidate_id = $prefix . str_pad($next_num, 2, '0', STR_PAD_LEFT);
 
+            // Rename file to prevent conflicts
+            $file_ext = strtolower(pathinfo($photo_name, PATHINFO_EXTENSION));
+            $new_filename = $candidate_id . '.' . $file_ext;
+            $target_file = $upload_dir . $new_filename;
+
+            // Check if image file is a actual image or fake image
+            $check = getimagesize($photo_tmp_name);
+            if($check === false) {
+                throw new Exception("File is not an image.");
+            }
+
+            // Allow certain file formats
+            if($file_ext != "jpg" && $file_ext != "png" && $file_ext != "jpeg" && $file_ext != "gif" ) {
+                throw new Exception("Sorry, only JPG, JPEG, PNG & GIF files are allowed.");
+            }
+
             // Upload Photo
-            if (move_uploaded_file($_FILES['photo']['tmp_name'], $target_file)) {
-                $photo_path = 'uploads/' . basename($photo_name); // Relative path for DB
+            if (move_uploaded_file($photo_tmp_name, $target_file)) {
+                $photo_path = 'uploads/' . $new_filename; // Relative path for DB
 
                 // Insert
                 $stmt = $pdo->prepare("INSERT INTO candidates (candidate_id, fullname, gender, portfolio_id, photo) VALUES (:candidate_id, :fullname, :gender, :portfolio_id, :photo)");
@@ -66,7 +90,7 @@ if (isset($_POST['add_candidate'])) {
                 ]);
                 $_SESSION['success'] = "Candidate added successfully. ID: " . $candidate_id;
             } else {
-                $_SESSION['error'] = "Failed to upload photo";
+                $_SESSION['error'] = "Failed to upload photo to destination.";
             }
 
         } catch (Exception $e) {
@@ -81,6 +105,18 @@ if (isset($_POST['add_candidate'])) {
 if (isset($_GET['delete'])) {
     $id = $_GET['delete'];
     try {
+        // Get photo path to delete file
+        $stmt = $pdo->prepare("SELECT photo FROM candidates WHERE id = ?");
+        $stmt->execute([$id]);
+        $photo_path = $stmt->fetchColumn();
+
+        if ($photo_path) {
+            $file_path = __DIR__ . '/../' . $photo_path;
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+        }
+
         $stmt = $pdo->prepare("DELETE FROM candidates WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $_SESSION['success'] = "Candidate deleted successfully";
