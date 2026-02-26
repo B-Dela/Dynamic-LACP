@@ -115,6 +115,7 @@ $programs = ['Visual Arts', 'General Arts', 'Home Econs', 'Agric Science', 'Gene
         .btn { padding: 0.75rem 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .btn-success { background-color: #28a745; }
         .btn-danger { background-color: #dc3545; }
+        .btn-info { background-color: #17a2b8; color: white; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f8f9fa; }
@@ -123,6 +124,20 @@ $programs = ['Visual Arts', 'General Arts', 'Home Econs', 'Agric Science', 'Gene
         .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
         .flex-row { display: flex; gap: 20px; }
         .flex-col { flex: 1; }
+
+        @media print {
+            .sidebar, .btn, .alert, .form-group, .card form, .card p, .card h3 { display: none; }
+            .wrapper { display: block; }
+            .main-content { margin-left: 0; padding: 0; }
+            .header { box-shadow: none; border-bottom: 2px solid #333; justify-content: center; }
+            .header h1 { font-size: 2rem; margin: 0; }
+            .card { box-shadow: none; padding: 0; }
+            .card h3:nth-of-type(2) { display: block; text-align: center; font-size: 1.5rem; margin-bottom: 20px; } /* Show "Existing Voters" title as register title */
+            table { width: 100%; border: 1px solid #ddd; }
+            th, td { border: 1px solid #ddd; padding: 10px; }
+            th:last-child, td:last-child { display: none; } /* Hide Action Column */
+            body { background-color: white; }
+        }
     </style>
 </head>
 <body>
@@ -131,12 +146,13 @@ $programs = ['Visual Arts', 'General Arts', 'Home Econs', 'Agric Science', 'Gene
             <h2>Admin Panel</h2>
             <ul>
                 <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="votes.php"><i class="fas fa-chart-pie"></i> Votes</a></li>
                 <li class="active"><a href="voters.php"><i class="fas fa-users"></i> Voters</a></li>
                 <li><a href="candidates.php"><i class="fas fa-user-tie"></i> Candidates</a></li>
                 <li><a href="portfolios.php"><i class="fas fa-list"></i> Portfolios</a></li>
                 <li><a href="classes.php"><i class="fas fa-school"></i> Classes</a></li>
                 <li><a href="stations.php"><i class="fas fa-building"></i> Polling Stations</a></li>
-                <li><a href="results.php"><i class="fas fa-chart-pie"></i> Results</a></li>
+                <li><a href="results.php"><i class="fas fa-chart-bar"></i> Results</a></li>
                 <li><a href="reset.php"><i class="fas fa-cogs"></i> System Reset</a></li>
                 <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
             </ul>
@@ -144,6 +160,7 @@ $programs = ['Visual Arts', 'General Arts', 'Home Econs', 'Agric Science', 'Gene
         <div class="main-content">
             <header class="header">
                 <h1>Manage Voters</h1>
+                <button onclick="window.print()" class="btn btn-info"><i class="fas fa-print"></i> Print Register</button>
             </header>
 
             <?php if (isset($_SESSION['success'])): ?>
@@ -198,7 +215,7 @@ $programs = ['Visual Arts', 'General Arts', 'Home Econs', 'Agric Science', 'Gene
             </div>
 
             <div class="card">
-                <h3>Existing Voters</h3>
+                <h3>Voter Register</h3>
                 <table>
                     <thead>
                         <tr>
