@@ -7,6 +7,9 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 
+$edit_mode = false;
+$edit_candidate = null;
+
 // Handle Add Candidate
 if (isset($_POST['add_candidate'])) {
     $fullname = trim($_POST['fullname']);
@@ -101,6 +104,75 @@ if (isset($_POST['add_candidate'])) {
     exit();
 }
 
+// Handle Update Candidate
+if (isset($_POST['update_candidate'])) {
+    $id = $_POST['candidate_id'];
+    $fullname = trim($_POST['fullname']);
+    $gender = $_POST['gender'];
+    $portfolio_id = $_POST['portfolio_id'];
+
+    // Check if new photo uploaded
+    $new_photo = !empty($_FILES['photo']['name']);
+
+    if (empty($fullname) || empty($gender) || empty($portfolio_id)) {
+        $_SESSION['error'] = "All text fields are required";
+    } else {
+        try {
+            // Get existing data to check if ID needs regeneration (if portfolio/gender changed)
+            // But usually changing portfolio/gender shouldn't change ID to avoid confusion,
+            // OR it should. Let's keep ID same for simplicity unless critical.
+            // Prompt doesn't specify ID regeneration on edit. Let's keep it simple: just update details.
+
+            if ($new_photo) {
+                $photo_name = $_FILES['photo']['name'];
+                $photo_tmp_name = $_FILES['photo']['tmp_name'];
+                $upload_dir = __DIR__ . '/../uploads/';
+
+                // Get current photo to overwrite or delete?
+                // Better to use existing candidate_id for filename
+                $stmt = $pdo->prepare("SELECT candidate_id, photo FROM candidates WHERE id = ?");
+                $stmt->execute([$id]);
+                $current = $stmt->fetch();
+
+                $file_ext = strtolower(pathinfo($photo_name, PATHINFO_EXTENSION));
+                $new_filename = $current['candidate_id'] . '.' . $file_ext; // Reuse ID
+                $target_file = $upload_dir . $new_filename;
+
+                // Upload
+                if (move_uploaded_file($photo_tmp_name, $target_file)) {
+                    $photo_path = 'uploads/' . $new_filename;
+
+                    $stmt = $pdo->prepare("UPDATE candidates SET fullname=?, gender=?, portfolio_id=?, photo=? WHERE id=?");
+                    $stmt->execute([$fullname, $gender, $portfolio_id, $photo_path, $id]);
+                } else {
+                     throw new Exception("Failed to upload new photo.");
+                }
+            } else {
+                $stmt = $pdo->prepare("UPDATE candidates SET fullname=?, gender=?, portfolio_id=? WHERE id=?");
+                $stmt->execute([$fullname, $gender, $portfolio_id, $id]);
+            }
+
+            $_SESSION['success'] = "Candidate updated successfully.";
+
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Error updating candidate: " . $e->getMessage();
+        }
+    }
+    header('Location: candidates.php');
+    exit();
+}
+
+// Handle Edit Mode
+if (isset($_GET['edit'])) {
+    $id = $_GET['edit'];
+    $stmt = $pdo->prepare("SELECT * FROM candidates WHERE id = ?");
+    $stmt->execute([$id]);
+    $edit_candidate = $stmt->fetch();
+    if ($edit_candidate) {
+        $edit_mode = true;
+    }
+}
+
 // Handle Delete Candidate
 if (isset($_GET['delete'])) {
     $id = $_GET['delete'];
@@ -159,7 +231,9 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
         .form-group label { display: block; margin-bottom: 0.5rem; }
         .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         .btn { padding: 0.75rem 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
         .btn-danger { background-color: #dc3545; }
+        .btn-info { background-color: #17a2b8; color: white; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f8f9fa; }
@@ -167,6 +241,19 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
         .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
         .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
         .candidate-img { width: 50px; height: 50px; object-fit: cover; border-radius: 50%; }
+
+        @media print {
+            .sidebar, .form-group, .card form, .card h3:first-child, .alert, .btn { display: none; } /* Hide Sidebar, Forms, Top Card Title, Alerts, Buttons */
+            .wrapper { display: block; }
+            .main-content { margin: 0; padding: 0; }
+            .header { box-shadow: none; border-bottom: 2px solid #333; justify-content: center; }
+            .header h1 { font-size: 2rem; margin: 0; }
+            .card { box-shadow: none; padding: 0; }
+            table { width: 100%; border: 1px solid #ddd; }
+            th, td { border: 1px solid #ddd; padding: 10px; }
+            th:last-child, td:last-child { display: none; } /* Hide Action Column */
+            body { background-color: white; }
+        }
     </style>
 </head>
 <body>
@@ -188,6 +275,7 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
         <div class="main-content">
             <header class="header">
                 <h1>Manage Candidates</h1>
+                <button onclick="window.print()" class="btn btn-info"><i class="fas fa-print"></i> Print Candidates</button>
             </header>
 
             <?php if (isset($_SESSION['success'])): ?>
@@ -198,18 +286,22 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
             <?php endif; ?>
 
             <div class="card">
-                <h3>Add New Candidate</h3>
+                <h3><?php echo $edit_mode ? 'Edit Candidate' : 'Add New Candidate'; ?></h3>
                 <form action="candidates.php" method="POST" enctype="multipart/form-data">
+                    <?php if ($edit_mode): ?>
+                        <input type="hidden" name="candidate_id" value="<?php echo $edit_candidate['id']; ?>">
+                    <?php endif; ?>
+
                     <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" name="fullname" required>
+                        <input type="text" name="fullname" required value="<?php echo $edit_mode ? htmlspecialchars($edit_candidate['fullname']) : ''; ?>">
                     </div>
                     <div class="form-group">
                         <label>Gender</label>
                         <select name="gender" required>
                             <option value="">Select Gender</option>
-                            <option value="Boy">Boy</option>
-                            <option value="Girl">Girl</option>
+                            <option value="Boy" <?php echo ($edit_mode && $edit_candidate['gender'] == 'Boy') ? 'selected' : ''; ?>>Boy</option>
+                            <option value="Girl" <?php echo ($edit_mode && $edit_candidate['gender'] == 'Girl') ? 'selected' : ''; ?>>Girl</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -217,15 +309,24 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
                         <select name="portfolio_id" required>
                             <option value="">Select Portfolio</option>
                             <?php foreach ($portfolios as $p): ?>
-                                <option value="<?php echo $p['id']; ?>"><?php echo htmlspecialchars($p['portfolio_name']); ?></option>
+                                <option value="<?php echo $p['id']; ?>" <?php echo ($edit_mode && $edit_candidate['portfolio_id'] == $p['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($p['portfolio_name']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Photo</label>
-                        <input type="file" name="photo" required accept="image/*">
+                        <label>Photo <?php echo $edit_mode ? '(Leave empty to keep current)' : ''; ?></label>
+                        <input type="file" name="photo" <?php echo $edit_mode ? '' : 'required'; ?> accept="image/*">
+                        <?php if ($edit_mode && !empty($edit_candidate['photo'])): ?>
+                            <br><img src="../<?php echo $edit_candidate['photo']; ?>" width="50" style="margin-top:10px;">
+                        <?php endif; ?>
                     </div>
-                    <button type="submit" name="add_candidate" class="btn">Add Candidate</button>
+
+                    <?php if ($edit_mode): ?>
+                        <button type="submit" name="update_candidate" class="btn btn-warning">Update Candidate</button>
+                        <a href="candidates.php" class="btn" style="background:#6c757d; color:white;">Cancel</a>
+                    <?php else: ?>
+                        <button type="submit" name="add_candidate" class="btn">Add Candidate</button>
+                    <?php endif; ?>
                 </form>
             </div>
 
@@ -251,7 +352,8 @@ $portfolios = $pdo->query("SELECT * FROM portfolios ORDER BY portfolio_name ASC"
                             <td><?php echo $candidate['gender']; ?></td>
                             <td><?php echo htmlspecialchars($candidate['portfolio_name']); ?></td>
                             <td>
-                                <a href="candidates.php?delete=<?php echo $candidate['id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                                <a href="candidates.php?edit=<?php echo $candidate['id']; ?>" class="btn btn-warning" style="padding: 5px 10px; font-size: 0.9rem;">Edit</a>
+                                <a href="candidates.php?delete=<?php echo $candidate['id']; ?>" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9rem;" onclick="return confirm('Are you sure?')">Delete</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
