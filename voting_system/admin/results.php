@@ -52,7 +52,7 @@ foreach ($results as $p_name => $cands) {
         .sidebar ul li.active a { color: #fff; }
         .main-content { flex-grow: 1; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .result-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .result-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; page-break-inside: avoid; }
         .result-card h3 { border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; color: #333; }
         .candidate-row { display: flex; align-items: center; margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #eee; }
         .candidate-row:last-child { border-bottom: none; }
@@ -60,9 +60,20 @@ foreach ($results as $p_name => $cands) {
         .candidate-info { flex-grow: 1; }
         .candidate-name { font-size: 1.1rem; font-weight: bold; }
         .vote-count { font-size: 1.2rem; font-weight: bold; color: #007bff; }
-        .progress-bar-bg { background-color: #e9ecef; height: 10px; border-radius: 5px; margin-top: 5px; overflow: hidden; }
-        .progress-bar { height: 100%; background-color: #28a745; }
-        .winner-badge { background-color: #ffc107; color: #333; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; }
+        .progress-bar-bg { background-color: #e9ecef; height: 10px; border-radius: 5px; margin-top: 5px; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .progress-bar { height: 100%; background-color: #28a745; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .winner-badge { background-color: #ffc107; color: #333; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        @media print {
+            .sidebar { display: none; }
+            .header button { display: none; }
+            .wrapper { display: block; }
+            .main-content { margin: 0; padding: 0; }
+            body { background-color: white; }
+            .result-card { box-shadow: none; border: 1px solid #eee; break-inside: avoid; }
+            .header { box-shadow: none; border-bottom: 2px solid #333; justify-content: center; }
+            .header h1 { font-size: 2rem; margin: 0; }
+        }
     </style>
 </head>
 <body>
@@ -71,12 +82,13 @@ foreach ($results as $p_name => $cands) {
             <h2>Admin Panel</h2>
             <ul>
                 <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="votes.php"><i class="fas fa-chart-pie"></i> Votes</a></li>
                 <li><a href="voters.php"><i class="fas fa-users"></i> Voters</a></li>
                 <li><a href="candidates.php"><i class="fas fa-user-tie"></i> Candidates</a></li>
                 <li><a href="portfolios.php"><i class="fas fa-list"></i> Portfolios</a></li>
                 <li><a href="classes.php"><i class="fas fa-school"></i> Classes</a></li>
                 <li><a href="stations.php"><i class="fas fa-building"></i> Polling Stations</a></li>
-                <li class="active"><a href="results.php"><i class="fas fa-chart-pie"></i> Results</a></li>
+                <li class="active"><a href="results.php"><i class="fas fa-chart-bar"></i> Results</a></li>
                 <li><a href="reset.php"><i class="fas fa-cogs"></i> System Reset</a></li>
                 <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
             </ul>
