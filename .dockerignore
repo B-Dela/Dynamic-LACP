@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+
+# Application directories (Optional to keep clear for the build context)
+uploads/
+outputs/
+
+# Git
+.git/
+.gitignore
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
